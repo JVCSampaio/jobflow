@@ -8,7 +8,10 @@ namespace JobFlow.Tests;
 public class UserServiceTests : IAsyncLifetime
 {
     private JobFlowDbContext _db = null!;
-    private const string Key = "test-signing-key-32-chars-minimum-00";
+    // MUST equal the key TestHost sets before the API host is built, so the
+    // token the controller signs (reads env at call time) always validates
+    // against the host's key (captured at build time) even under parallel runs.
+    private const string Key = "test-signing-key-32-bytes-minimum!!";
 
     public Task InitializeAsync()
     {
