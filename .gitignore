@@ -1,0 +1,16 @@
+bin/
+obj/
+.vs/
+.idea/
+*.user
+*.suo
+.vscode/
+TestResults/
+artifacts/
+*.bin
+*.exe
+*.dll
+*.pdb
+*.cache
+*.userprefs
+.DS_Store
