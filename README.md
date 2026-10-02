@@ -1,20 +1,22 @@
 # JobFlow
 
+[![CI](https://github.com/JVCSampaio/jobflow/actions/workflows/ci.yml/badge.svg)](https://github.com/JVCSampaio/jobflow/actions/workflows/ci.yml) · [Portfólio](https://github.com/JVCSampaio)
+
 **Backend de jobs** em **C# / .NET 10** (ASP.NET Core Web API): autenticacao JWT, rate limiting, exception handling global, background worker com retry/backoff, EF Core + PostgreSQL e testes de integracao — tudo dentro de **Docker** com **CI** no GitHub Actions.
 
-> Nao e um CRUD de exemplo. E um servico de jobs com estado, retries e autenticacao de verdade — o tipo de projeto que responde as perguntas de entrevista de **Backend Engineer / .NET Developer**.
+O serviço mantém o estado dos jobs, executa tarefas em segundo plano e permite novas tentativas após falhas. A documentação apresenta a arquitetura, a API e as instruções de execução.
 
-## O que ele prova (e por que)
+## Funcionalidades e implementação
 
-| Capacidade | Onde aparece | Pergunta de entrevista que responde |
-|---|---|---|
-| **Autenticacao JWT** | `AuthController` + `JwtBearer` (HMAC-SHA256) | "Como voce protege a API? Como expira token?" |
-| **Rate limiting** | `RateLimitMiddleware` (janela fixa por IP, 60 req/min) | "Como voce protege contra abuso?" |
-| **Exception handling** | `ExceptionMiddleware` mapeia excecoes para status HTTP | "Como voce trata erros sem vazar stack trace?" |
-| **Retry/backoff** | `JobProcessor` (maquina de estados pura, testavel) | "Como voce lida com falhas de forma idempotente?" |
-| **Background worker** | `JobWorker` (`IHostedService`) | "Como voce processa jobs async?" |
-| **EF Core + migrations** | `JobFlowDbContext` + `Migrations/` | "Como voce modela e migra o schema?" |
-| **Testes de integracao** | `WebApplicationFactory` + InMemory | "Como voce testa a API de ponta a ponta?" |
+| Capacidade | Implementação |
+|---|---|
+| **Autenticacao JWT** | `AuthController` + `JwtBearer` (HMAC-SHA256) |
+| **Rate limiting** | `RateLimitMiddleware` (janela fixa por IP, 60 req/min) |
+| **Exception handling** | `ExceptionMiddleware` mapeia excecoes para status HTTP |
+| **Retry/backoff** | `JobProcessor` (maquina de estados pura, testavel) |
+| **Background worker** | `JobWorker` (`IHostedService`) |
+| **EF Core + migrations** | `JobFlowDbContext` + `Migrations/` |
+| **Testes de integracao** | `WebApplicationFactory` + InMemory |
 
 ## Arquitetura
 
@@ -70,7 +72,7 @@ dotnet run --project src/JobFlow.Api
 ## API (exemplos)
 
 | Endpoint | Auth | O que retorna |
-|---|---|---|
+|---|---|
 | `GET /health` | — | `{"status":"ok"}` |
 | `POST /api/auth/register` | — | `201` + JWT token |
 | `POST /api/auth/login` | — | `200` + JWT token |
