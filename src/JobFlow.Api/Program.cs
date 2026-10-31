@@ -88,6 +88,20 @@ public class JobFlowApi
         // --- MVC controllers ---
         builder.Services.AddControllers();
 
+        // --- OpenAPI document consumed by Swagger UI ---
+        builder.Services.AddOpenApi(options =>
+        {
+            options.AddDocumentTransformer((document, _, _) =>
+            {
+                document.Info ??= new Microsoft.OpenApi.OpenApiInfo();
+                document.Info.Title = "JobFlow";
+                document.Info.Version = "v1";
+                document.Info.Description =
+                    "API de jobs com autenticação JWT, rate limiting e processamento em segundo plano.";
+                return Task.CompletedTask;
+            });
+        });
+
         // --- Services ---
         builder.Services.AddScoped<UserService>();
 
@@ -110,6 +124,14 @@ public class JobFlowApi
     /// </summary>
     public static void ConfigurePipeline(WebApplication app)
     {
+        // Swagger UI is registered first so its static assets are not rate limited.
+        app.UseSwaggerUI(options =>
+        {
+            options.SwaggerEndpoint("/openapi/v1.json", "JobFlow v1");
+            options.DocumentTitle = "JobFlow API";
+            options.DocExpansion(Swashbuckle.AspNetCore.SwaggerUI.DocExpansion.List);
+        });
+
         app.UseMiddleware<ExceptionMiddleware>();
 
         // Rate limiter is a singleton (no RequestDelegate ctor), so invoke it
@@ -125,5 +147,6 @@ public class JobFlowApi
 
         app.MapControllers();
         app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
+        app.MapOpenApi();
     }
 }

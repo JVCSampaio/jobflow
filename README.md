@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/JVCSampaio/jobflow/actions/workflows/ci.yml/badge.svg)](https://github.com/JVCSampaio/jobflow/actions/workflows/ci.yml) · [Portfólio](https://github.com/JVCSampaio)
 
-**Backend de jobs** em **C# / .NET 10** (ASP.NET Core Web API): autenticacao JWT, rate limiting, exception handling global, background worker com retry/backoff, EF Core + PostgreSQL e testes de integracao — tudo dentro de **Docker** com **CI** no GitHub Actions.
+**Backend de jobs** em **C# / .NET 10** (ASP.NET Core Web API): autenticação JWT, rate limiting, exception handling global, background worker com retry/backoff, EF Core + PostgreSQL e testes de integração, tudo dentro de **Docker** com **CI** no GitHub Actions.
 
 O serviço mantém o estado dos jobs, executa tarefas em segundo plano e permite novas tentativas após falhas. A documentação apresenta a arquitetura, a API e as instruções de execução.
 
@@ -10,13 +10,14 @@ O serviço mantém o estado dos jobs, executa tarefas em segundo plano e permite
 
 | Capacidade | Implementação |
 |---|---|
-| **Autenticacao JWT** | `AuthController` + `JwtBearer` (HMAC-SHA256) |
+| **Autenticação JWT** | `AuthController` + `JwtBearer` (HMAC-SHA256) |
 | **Rate limiting** | `RateLimitMiddleware` (janela fixa por IP, 60 req/min) |
-| **Exception handling** | `ExceptionMiddleware` mapeia excecoes para status HTTP |
-| **Retry/backoff** | `JobProcessor` (maquina de estados pura, testavel) |
+| **Exception handling** | `ExceptionMiddleware` mapeia exceções para status HTTP |
+| **Retry/backoff** | `JobProcessor` (máquina de estados pura, testável) |
 | **Background worker** | `JobWorker` (`IHostedService`) |
 | **EF Core + migrations** | `JobFlowDbContext` + `Migrations/` |
-| **Testes de integracao** | `WebApplicationFactory` + InMemory |
+| **Testes de integração** | `WebApplicationFactory` + InMemory |
+| **OpenAPI** | Swagger UI em `/swagger` |
 
 ## Arquitetura
 
@@ -54,7 +55,7 @@ O serviço mantém o estado dos jobs, executa tarefas em segundo plano e permite
 docker compose up --build
 ```
 
-Sobe o Postgres, cria as tabelas (migrations no startup) e sobe a API em `http://localhost:8080`.
+Sobe o Postgres, cria as tabelas (migrations no startup) e sobe a API em `http://localhost:8080`. A documentação interativa fica em `http://localhost:8080/swagger`.
 
 ### Manual (sem Docker)
 
@@ -69,17 +70,19 @@ export DATABASE_URL="Host=localhost;Port=5432;Database=jobflow;Username=jobflow;
 dotnet run --project src/JobFlow.Api
 ```
 
+O perfil `http` escuta em `http://localhost:5284`. A documentação fica em `/swagger`.
+
 ## API (exemplos)
 
 | Endpoint | Auth | O que retorna |
-|---|---|
-| `GET /health` | — | `{"status":"ok"}` |
-| `POST /api/auth/register` | — | `201` + JWT token |
-| `POST /api/auth/login` | — | `200` + JWT token |
+|---|---|---|
+| `GET /health` | não | `{"status":"ok"}` |
+| `POST /api/auth/register` | não | `201` + JWT token |
+| `POST /api/auth/login` | não | `200` + JWT token |
 | `POST /api/jobs` | Bearer | `201` + job criado |
 | `GET /api/jobs` | Bearer | lista de jobs |
 | `GET /api/jobs/{id}` | Bearer | job |
-| `POST /api/jobs/{id}/retry` | Bearer | job re-enfileirado |
+| `POST /api/jobs/{id}/retry` | Bearer | job reenfileirado |
 | `DELETE /api/jobs/{id}` | Bearer | `204` |
 
 Exemplo de fluxo:
@@ -94,29 +97,37 @@ curl -s -X POST http://localhost:8080/api/jobs \
   -d '{"name":"process-order","payload":"order-42"}'
 ```
 
+### Documentação interativa
+
+Com a API em execução, o Swagger UI lista os endpoints, os modelos e as respostas em `/swagger`.
+
+![Documentação OpenAPI da API JobFlow](docs/swagger.png)
+
 ## Testes e CI
 
 ```bash
-dotnet test JobFlow.slnx        # 19 testes (unit + integracao)
+dotnet test JobFlow.slnx        # 19 testes (unit + integração)
 ```
 
 - **Unit:** `JobProcessorTests` (retry/backoff), `UserServiceTests` (BCrypt + JWT round-trip).
-- **Integracao:** `ApiIntegrationTests` sobe a API real via `WebApplicationFactory` com banco InMemory — register, login, CRUD de jobs, retry, rate limit.
+- **Integração:** `ApiIntegrationTests` sobe a API real via `WebApplicationFactory` com banco InMemory: register, login, CRUD de jobs, retry e rate limit.
 
 O workflow `.github/workflows/ci.yml` roda build + testes em cada push.
 
-## Decisoes tecnicas (o "por que")
+## Decisões técnicas (o porquê)
 
-- **`JobProcessor` puro (sem DB).** A maquina de estados (retry/backoff) e separada do worker, entao e testavel sem banco ou network.
-- **`WebApplicationFactory` + InMemory nos testes.** Roda a API de verdade (middleware, JWT, controllers) contra um banco InMemory — integracao sem Postgres.
-- **Rate limiter singleton (sem `RequestDelegate` ctor).** Invocado via delegate que resolve o singleton do DI — padrao para middlewares que nao seguem o ctor tradicional.
+- **`JobProcessor` puro (sem DB).** A máquina de estados (retry/backoff) é separada do worker, então é testável sem banco ou network.
+- **`WebApplicationFactory` + InMemory nos testes.** Roda a API de verdade (middleware, JWT, controllers) contra um banco InMemory, integração sem Postgres.
+- **Rate limiter singleton (sem `RequestDelegate` ctor).** Invocado via delegate que resolve o singleton do DI, padrão para middlewares que não seguem o ctor tradicional.
 - **Exception middleware global.** Mapeia `DbUpdateException`→409, `KeyNotFoundException`→404, `InvalidOperationException`→409; loga o resto com correlation id.
-- **Migrations no startup (gateable).** `RUN_MIGRATIONS_ON_STARTUP` permite desligar em testes; em producao sobe o schema automaticamente.
+- **Migrations no startup (gateable).** `RUN_MIGRATIONS_ON_STARTUP` permite desligar em testes; em produção sobe o schema automaticamente.
 
 ## Estrutura
 
 ```
 jobflow/
+├── docs/
+│   └── swagger.png           # captura da documentação em /swagger
 ├── src/JobFlow.Api/
 │   ├── Controllers/          # AuthController, JobsController
 │   ├── Middleware/           # ExceptionMiddleware, RateLimitMiddleware
@@ -139,18 +150,17 @@ jobflow/
 └── README.md
 ```
 
-## Limitacoes e roadmap
+## Limitações e roadmap
 
-**Limitacoes (honestas):**
-- Rate limiter em memoria (single-instance); em producao com multi-instancia, usar Redis.
+**Limitações (honestas):**
+- Rate limiter em memória (single-instance); em produção com multi-instância, usar Redis.
 - Worker processa em loop simples; para alto volume, usar fila (RabbitMQ/Azure Service Bus).
-- Sem pagination/offset na lista de jobs (apenas `take`).
+- Sem paginação na lista de jobs (apenas `take`, sem offset).
 
 **Roadmap (proposital):**
 - **Fila externa** (RabbitMQ) para desacoplar API e worker.
 - **Distributed tracing** (OpenTelemetry) para observabilidade.
-- **OpenAPI/Swagger** exposto em `/swagger`.
 
-## Licenca
+## Licença
 
-MIT — veja [LICENSE](LICENSE).
+MIT. Veja [LICENSE](LICENSE).
