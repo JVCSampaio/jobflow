@@ -124,13 +124,21 @@ public class JobFlowApi
     /// </summary>
     public static void ConfigurePipeline(WebApplication app)
     {
+        // API docs are on in Development and when ENABLE_SWAGGER=true (docker-compose),
+        // so a production deploy does not publish its schema by default.
+        var swaggerEnabled = app.Environment.IsDevelopment()
+            || Environment.GetEnvironmentVariable("ENABLE_SWAGGER") == "true";
+
         // Swagger UI is registered first so its static assets are not rate limited.
-        app.UseSwaggerUI(options =>
+        if (swaggerEnabled)
         {
-            options.SwaggerEndpoint("/openapi/v1.json", "JobFlow v1");
-            options.DocumentTitle = "JobFlow API";
-            options.DocExpansion(Swashbuckle.AspNetCore.SwaggerUI.DocExpansion.List);
-        });
+            app.UseSwaggerUI(options =>
+            {
+                options.SwaggerEndpoint("/openapi/v1.json", "JobFlow v1");
+                options.DocumentTitle = "JobFlow API";
+                options.DocExpansion(Swashbuckle.AspNetCore.SwaggerUI.DocExpansion.List);
+            });
+        }
 
         app.UseMiddleware<ExceptionMiddleware>();
 
@@ -147,6 +155,9 @@ public class JobFlowApi
 
         app.MapControllers();
         app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
-        app.MapOpenApi();
+        if (swaggerEnabled)
+        {
+            app.MapOpenApi();
+        }
     }
 }

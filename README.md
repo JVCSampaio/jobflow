@@ -1,6 +1,6 @@
 # JobFlow
 
-[![CI](https://github.com/JVCSampaio/jobflow/actions/workflows/ci.yml/badge.svg)](https://github.com/JVCSampaio/jobflow/actions/workflows/ci.yml) · [Portfólio](https://github.com/JVCSampaio)
+[![CI](https://github.com/JVCSampaio/jobflow/actions/workflows/ci.yml/badge.svg)](https://github.com/JVCSampaio/jobflow/actions/workflows/ci.yml) [Portfólio](https://github.com/JVCSampaio)
 
 **Backend de jobs** em **C# / .NET 10** (ASP.NET Core Web API): autenticação JWT, rate limiting, exception handling global, background worker com retry/backoff, EF Core + PostgreSQL e testes de integração, tudo dentro de **Docker** com **CI** no GitHub Actions.
 
@@ -17,7 +17,7 @@ O serviço mantém o estado dos jobs, executa tarefas em segundo plano e permite
 | **Background worker** | `JobWorker` (`IHostedService`) |
 | **EF Core + migrations** | `JobFlowDbContext` + `Migrations/` |
 | **Testes de integração** | `WebApplicationFactory` + InMemory |
-| **OpenAPI** | Swagger UI em `/swagger` |
+| **OpenAPI** | Swagger UI em `/swagger`, ligado em Development e com `ENABLE_SWAGGER=true` |
 
 ## Arquitetura
 
@@ -99,25 +99,25 @@ curl -s -X POST http://localhost:8080/api/jobs \
 
 ### Documentação interativa
 
-Com a API em execução, o Swagger UI lista os endpoints, os modelos e as respostas em `/swagger`.
+Com a API em execução, o Swagger UI lista os endpoints, os modelos e as respostas em `/swagger`. Ele fica ligado no ambiente Development e no `docker-compose.yml` (`ENABLE_SWAGGER=true`). Em qualquer outro ambiente, `/swagger` e `/openapi/v1.json` respondem 404, para um deploy de produção não publicar o esquema da API.
 
 ![Documentação OpenAPI da API JobFlow](docs/swagger.png)
 
 ## Testes e CI
 
 ```bash
-dotnet test JobFlow.slnx        # 19 testes (unit + integração)
+dotnet test JobFlow.slnx        # 23 testes (unit + integração)
 ```
 
 - **Unit:** `JobProcessorTests` (retry/backoff), `UserServiceTests` (BCrypt + JWT round-trip).
-- **Integração:** `ApiIntegrationTests` sobe a API real via `WebApplicationFactory` com banco InMemory: register, login, CRUD de jobs, retry e rate limit.
+- **Integração:** `ApiIntegrationTests` sobe a API completa via `WebApplicationFactory` com banco InMemory: register, login, CRUD de jobs, retry e rate limit.
 
 O workflow `.github/workflows/ci.yml` roda build + testes em cada push.
 
 ## Decisões técnicas (o porquê)
 
 - **`JobProcessor` puro (sem DB).** A máquina de estados (retry/backoff) é separada do worker, então é testável sem banco ou network.
-- **`WebApplicationFactory` + InMemory nos testes.** Roda a API de verdade (middleware, JWT, controllers) contra um banco InMemory, integração sem Postgres.
+- **`WebApplicationFactory` + InMemory nos testes.** Roda a API inteira (middleware, JWT, controllers) contra um banco InMemory, integração sem Postgres.
 - **Rate limiter singleton (sem `RequestDelegate` ctor).** Invocado via delegate que resolve o singleton do DI, padrão para middlewares que não seguem o ctor tradicional.
 - **Exception middleware global.** Mapeia `DbUpdateException`→409, `KeyNotFoundException`→404, `InvalidOperationException`→409; loga o resto com correlation id.
 - **Migrations no startup (gateable).** `RUN_MIGRATIONS_ON_STARTUP` permite desligar em testes; em produção sobe o schema automaticamente.
@@ -152,7 +152,7 @@ jobflow/
 
 ## Limitações e roadmap
 
-**Limitações (honestas):**
+**Limitações:**
 - Rate limiter em memória (single-instance); em produção com multi-instância, usar Redis.
 - Worker processa em loop simples; para alto volume, usar fila (RabbitMQ/Azure Service Bus).
 - Sem paginação na lista de jobs (apenas `take`, sem offset).
