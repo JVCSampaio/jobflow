@@ -88,6 +88,20 @@ public class JobFlowApi
         // --- MVC controllers ---
         builder.Services.AddControllers();
 
+        // --- OpenAPI document consumed by Swagger UI ---
+        builder.Services.AddOpenApi(options =>
+        {
+            options.AddDocumentTransformer((document, _, _) =>
+            {
+                document.Info ??= new Microsoft.OpenApi.OpenApiInfo();
+                document.Info.Title = "JobFlow";
+                document.Info.Version = "v1";
+                document.Info.Description =
+                    "API de jobs com autenticação JWT, rate limiting e processamento em segundo plano.";
+                return Task.CompletedTask;
+            });
+        });
+
         // --- Services ---
         builder.Services.AddScoped<UserService>();
 
@@ -110,6 +124,22 @@ public class JobFlowApi
     /// </summary>
     public static void ConfigurePipeline(WebApplication app)
     {
+        // API docs are on in Development and when ENABLE_SWAGGER=true (docker-compose),
+        // so a production deploy does not publish its schema by default.
+        var swaggerEnabled = app.Environment.IsDevelopment()
+            || Environment.GetEnvironmentVariable("ENABLE_SWAGGER") == "true";
+
+        // Swagger UI is registered first so its static assets are not rate limited.
+        if (swaggerEnabled)
+        {
+            app.UseSwaggerUI(options =>
+            {
+                options.SwaggerEndpoint("/openapi/v1.json", "JobFlow v1");
+                options.DocumentTitle = "JobFlow API";
+                options.DocExpansion(Swashbuckle.AspNetCore.SwaggerUI.DocExpansion.List);
+            });
+        }
+
         app.UseMiddleware<ExceptionMiddleware>();
 
         // Rate limiter is a singleton (no RequestDelegate ctor), so invoke it
@@ -125,5 +155,9 @@ public class JobFlowApi
 
         app.MapControllers();
         app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
+        if (swaggerEnabled)
+        {
+            app.MapOpenApi();
+        }
     }
 }

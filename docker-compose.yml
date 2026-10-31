@@ -21,6 +21,7 @@ services:
       DATABASE_URL: Host=db;Port=5432;Database=jobflow;Username=jobflow;Password=jobflow
       JWT_SIGNING_KEY: change-me-in-production-32-bytes-minimum
       RUN_MIGRATIONS_ON_STARTUP: "true"
+      ENABLE_SWAGGER: "true"
     depends_on:
       db:
         condition: service_healthy
